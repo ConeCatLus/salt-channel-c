@@ -251,6 +251,48 @@ int api_crypto_sign(uint8_t *signed_message,
     return ret;
 }
 
+ /**
+  * @brief Creates a signature using a secret signing key.
+  * 
+  * Example usage:
+  *  const uint8_t signature[api_crypto_sign_BYTES];
+  *  const uint8_t signature_length;
+  *  const uint8_t message[4] = { 'a', 'b', 'c', 'd' };
+  *  uint64_t mlen = 4;
+  *  const uint8_t secret_key[crypto_sign_SECRETKEYBYTES];
+  *  api_crypto_sign_detached(signature, &signature_length, message, mlen, secret_key);
+  *  
+  * @param signature         Pointer where to store signature.
+  * @param signature_length  Signature length will be returned if pointed value
+  *                          is not NULL. I.e, the pointer may be NULL. The length of
+  *                          the signature is always api_crypto_sign_BYTES.
+  *                      
+  * @param message           Pointer to message to sign.
+  * @param message_length    Length of message to sign.
+  * @param secret_key        Pointer to signer's secret key, api_crypto_sign_SECRETKEYBYTES
+  *                          bytes long.
+  *                          
+  * @return 0    The signature was successfully created.
+  * @return != 0 The signature could not be created.
+  */
+int api_crypto_sign_detached(uint8_t *signature,
+                             uint64_t *signature_length,
+                             const uint8_t *message,
+                             uint64_t message_length,
+                             const uint8_t *secret_key)
+{
+    unsigned long long smlen;
+    int ret = crypto_sign_detached(signature,
+                                   &smlen,
+                                   message,
+                                   message_length,
+                                   secret_key);
+    if (signature_length != NULL) {
+        *signature_length = smlen;
+    }
+    return ret;
+}
+
 /**
  * @brief Verifies a signed message using the signer's public key.
  * 

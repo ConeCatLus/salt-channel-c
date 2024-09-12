@@ -89,6 +89,7 @@ int salt_crypto_wrapper_test(void)
     VERIFY(test_api_crypto_box_beforenm() == 0);
     VERIFY(test_api_crypto_box_afternm() == 0);
     VERIFY(test_api_crypto_sign() == 0);
+    VERIFY(test_api_crypto_sign_detached() == 0);
     VERIFY(test_api_crypto_hash() == 0);
 
     return 0;
@@ -375,6 +376,77 @@ int test_api_crypto_sign(void)
                                           sizeof(calculated_signed_message) - api_crypto_sign_BYTES,
                                           alice_sk_pub);
     VERIFY(0 != ret);
+
+    return 0;
+}
+
+int test_api_crypto_sign_detached(void)
+{
+    int ret;
+    const uint8_t message[26] = {
+        /* Ascii string: "Signed message from Alice" */
+        0x53, 0x69, 0x67, 0x6e, 0x65, 0x64, 0x20, 0x6d,
+        0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x20, 0x66,
+        0x72, 0x6f, 0x6d, 0x20, 0x41, 0x6c, 0x69, 0x63,
+        0x65, 0x00
+    };
+    const uint8_t expected_signature[api_crypto_sign_BYTES] = {
+        /* Signature of message[] signed by alice. */
+        0xf9, 0x01, 0xda, 0xe6, 0x52, 0x8a, 0x86, 0xb7,
+        0xa0, 0xb4, 0x2d, 0xef, 0xe8, 0xdf, 0x88, 0x3a,
+        0xa5, 0x52, 0x60, 0xd5, 0x3b, 0x0e, 0xed, 0xf3,
+        0x80, 0x58, 0xa5, 0x3d, 0xa3, 0xf3, 0xf5, 0x67,
+        0xce, 0x56, 0xa6, 0x09, 0x45, 0xbe, 0x71, 0x8f,
+        0x68, 0x3b, 0x39, 0x5c, 0xc1, 0x1e, 0xee, 0xab,
+        0x82, 0xaa, 0x69, 0x24, 0xc8, 0xa8, 0x35, 0x3a,
+        0x1a, 0x84, 0x8c, 0xf0, 0xa4, 0xab, 0x51, 0x06,
+    };
+
+    uint8_t calculated_signature[api_crypto_sign_BYTES];
+    memset(calculated_signature, 0x00, api_crypto_sign_BYTES);
+
+    uint64_t signature_length;
+
+    ret = api_crypto_sign_detached(calculated_signature,
+                                   &signature_length,
+                                   message,
+                                   sizeof(message),
+                                   alice_sk_sec);
+    VERIFY(0 == ret);
+    VERIFY(memcmp(calculated_signature, expected_signature, api_crypto_sign_BYTES) == 0);
+    VERIFY(signature_length == api_crypto_sign_BYTES);
+    memset(calculated_signature, 0x00, api_crypto_sign_BYTES);
+
+    /* api_crypto_sign allows NULL ptr on length arg. */
+    ret = api_crypto_sign_detached(calculated_signature,
+                                   NULL,
+                                   message,
+                                   sizeof(message),
+                                   alice_sk_sec);
+    VERIFY(0 == ret);
+    VERIFY(memcmp(calculated_signature, expected_signature, api_crypto_sign_BYTES) == 0);
+
+
+    /* Different message should give different signature. */
+    uint8_t message2[sizeof(message)];
+    memcpy(message2, message, sizeof(message));
+    message2[0] = ~message2[0];
+    ret = api_crypto_sign_detached(calculated_signature,
+                                   NULL,
+                                   message2,
+                                   sizeof(message2),
+                                   alice_sk_sec);
+    VERIFY(0 == ret);
+    VERIFY(memcmp(calculated_signature, expected_signature, api_crypto_sign_BYTES) != 0);
+
+    /* Different public key should give different signature. */
+    ret = api_crypto_sign_detached(calculated_signature,
+                                   NULL,
+                                   message,
+                                   sizeof(message),
+                                   bob_sk_sec);
+    VERIFY(0 == ret);
+    VERIFY(memcmp(calculated_signature, expected_signature, api_crypto_sign_BYTES) != 0);
 
     return 0;
 }
